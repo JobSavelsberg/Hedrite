@@ -9,13 +9,19 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+
 //==============================================================================
 HedriteAudioProcessorEditor::HedriteAudioProcessorEditor (HedriteAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    setSize (700, 800);
+    Hedrite::instance = &hedrite;
+    hedrite.initialize();
+    hedrite.openGLWindow->setInitializeCallback(Hedrite::openGLCallback);
+    addAndMakeVisible(*hedrite.openGLWindow);
+
 }
 
 HedriteAudioProcessorEditor::~HedriteAudioProcessorEditor()

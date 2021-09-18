@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="UoJr0W" name="Hedrite" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1">
+              addUsingNamespaceToJuceHeader="1" displaySplashScreen="1" jucerFormatVersion="1"
+              version="0.0.1" companyName="jobsavelsberg" pluginCharacteristicsValue="pluginIsSynth,pluginProducesMidiOut,pluginWantsMidiIn"
+              aaxIdentifier="com.jobsavelsberg.Hedrite" pluginRTASCategory="4"
+              pluginAAXCategory="4" pluginVSTCategory="kPlugCategUnknown" cppLanguageStandard="17">
   <MAINGROUP id="WVjmxz" name="Hedrite">
     <GROUP id="{31F13525-6C6E-F3AE-81A3-A410AE14AF08}" name="Source">
+      <FILE id="TOCDCH" name="OpenGLWindow.cpp" compile="1" resource="0"
+            file="Source/OpenGLWindow.cpp"/>
+      <FILE id="JfaHwK" name="OpenGLWindow.h" compile="0" resource="0" file="Source/OpenGLWindow.h"/>
       <FILE id="clwhSV" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
+      <FILE id="GX1cOc" name="Hedrite.cpp" compile="1" resource="0" file="Source/Hedrite.cpp"/>
+      <FILE id="Ljoj3U" name="Hedrite.h" compile="0" resource="0" file="Source/Hedrite.h"/>
       <FILE id="RNG1bA" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
       <FILE id="BXP426" name="PluginEditor.cpp" compile="1" resource="0"

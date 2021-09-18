@@ -10,12 +10,14 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "Hedrite.h"
 
 //==============================================================================
 /**
 */
 class HedriteAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
+    Hedrite hedrite;
 public:
     HedriteAudioProcessorEditor (HedriteAudioProcessor&);
     ~HedriteAudioProcessorEditor() override;
