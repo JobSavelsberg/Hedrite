@@ -21,11 +21,10 @@ public:
     };
 
 	struct Uniforms {
-		std::unique_ptr<juce::OpenGLShaderProgram::Uniform> projectionMatrix, viewMatrix;
+		std::unique_ptr<juce::OpenGLShaderProgram::Uniform> projectionMatrix, viewMatrix, lightPosition;
 		Uniforms(juce::OpenGLShaderProgram& shaderProgram);
 	private:
-		static juce::OpenGLShaderProgram::Uniform* createUniform(juce::OpenGLShaderProgram& shaderProgram,
-			const juce::String& uniformName);
+		static juce::OpenGLShaderProgram::Uniform* createUniform(juce::OpenGLShaderProgram& shaderProgram, const juce::String& uniformName);
 	};
 
     struct Shape {
@@ -71,5 +70,7 @@ public:
 
 	void createShaders();
 	Matrix3D<float> getViewMatrix() const;
+	Vector3D<float> getLightPosition() const;
 	Matrix3D<float> getProjectionMatrix() const;
 };
+juce::Vector3D<float> applyTransformationMatrix(const juce::Matrix3D<float>& matrix, const juce::Vector3D<float>& vector);

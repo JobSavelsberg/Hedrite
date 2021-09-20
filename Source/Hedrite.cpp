@@ -23,22 +23,7 @@ void Hedrite::initialize() {
 const float invsqrt2 = 1.0f / sqrt(2.0f);
 
 void Hedrite::mounted() {
-	DBG("--- Hedrite mounted ---");
-    float vertexPositionsTriangle[9] = {
-        -2.0f, 0.5f, 0.0f,
-        -2.5f, -0.5f, 0.0f,
-        -1.5f, -0.5f, 0.0f
-    };
-
-    float vertexNormalsTriangle[9] = {
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f,
-        0.0f, 0.0f, 1.0f
-    };
-
-    juce::uint32 indicesTriangle[3]{ 0,1,2 };
-    openGLWindow->shapes.emplace_back(3, vertexPositionsTriangle, vertexNormalsTriangle, indicesTriangle, juce::Colours::orange);
-   
+	DBG("--- Hedrite mounted ---");  
 
     Vector3D<float> points[4] = {
        Vector3D<float>(1.0f, 0.0f, -invsqrt2),
@@ -85,6 +70,6 @@ void Hedrite::mounted() {
         }
     }
 
-    openGLWindow->shapes.emplace_back(12, vertexPositions, vertexNormals, indices, juce::Colours::green);
+    openGLWindow->shapes.emplace_back(12, vertexPositions, vertexNormals, indices, juce::Colours::crimson);
     
 }

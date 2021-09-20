@@ -40,7 +40,9 @@ void OpenGLWindow::render(){
     juce::OpenGLHelpers::clear(Colour());
 
     glEnable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glPolygonOffset(0.1,1);
 
     glViewport(0,
         0,
@@ -54,6 +56,12 @@ void OpenGLWindow::render(){
 
     if (uniforms->viewMatrix.get() != nullptr)
         uniforms->viewMatrix->setMatrix4(getViewMatrix().mat, 1, false);
+
+    if (uniforms->lightPosition.get() != nullptr) {
+        Vector3D<float> lightPos = (Vector3D<float>)applyTransformationMatrix(getViewMatrix(), getLightPosition());
+        uniforms->lightPosition->set(lightPos.x, lightPos.y, lightPos.z, 1.0f);
+    }
+        
 
     for (auto& shape : shapes) {
         shape.draw(*attributes);
@@ -131,6 +139,8 @@ juce::OpenGLShaderProgram::Attribute* OpenGLWindow::Attributes::createAttribute(
 OpenGLWindow::Uniforms::Uniforms(juce::OpenGLShaderProgram& shaderProgram) {
     projectionMatrix.reset(createUniform(shaderProgram, "projectionMatrix"));
     viewMatrix.reset(createUniform(shaderProgram, "viewMatrix"));
+    lightPosition.reset(createUniform(shaderProgram, "lightPosition"));
+
 }
 
 juce::OpenGLShaderProgram::Uniform* OpenGLWindow::Uniforms::createUniform(juce::OpenGLShaderProgram& shaderProgram,
@@ -211,25 +221,34 @@ Matrix3D<float> OpenGLWindow::getProjectionMatrix() const {
 
 Matrix3D<float> OpenGLWindow::getViewMatrix() const {
     Matrix3D<float> viewMatrix({ 0.0f, 0.0f, -10.0f });
-    Matrix3D<float> rotationMatrix = viewMatrix.rotation({ -0.3f, 5.0f * std::sin((float)getFrameCounter() * 0.01f), 0.0f });
+    Matrix3D<float> rotationMatrix = viewMatrix.rotation({ -0.3f,4.0f * std::sin((float)getFrameCounter() * 0.005f), 0.5f });
 
     return rotationMatrix * viewMatrix;
 }
 
+Vector3D<float> OpenGLWindow::getLightPosition() const {
+    Vector3D<float> lightPos(10.0f,10.0f,0.0f);
+
+    return lightPos;
+}
+
+
 void OpenGLWindow::createShaders() {
     vertexShader = R"(
     attribute vec4 position;
+    attribute vec4 normal;
     attribute vec4 sourceColour;
 
     uniform mat4 projectionMatrix;
     uniform mat4 viewMatrix;
+    uniform vec4 lightPosition;
 
     varying vec4 destinationColour;
 
     void main()
     {
-        destinationColour = sourceColour;
-        gl_Position = projectionMatrix * viewMatrix * position;
+        destinationColour = vec4(sourceColour.xyz*min(1, .5+max(dot(normalize(lightPosition), normalize(normal)), 0.0)),1);
+        gl_Position = projectionMatrix * viewMatrix * (position+normal*.01f);
     })";
 
     fragmentShader =
@@ -248,16 +267,16 @@ void OpenGLWindow::createShaders() {
 #endif
         R"(    gl_FragColor = colour;
             })";
-    std::unique_ptr<juce::OpenGLShaderProgram> newShader(new juce::OpenGLShaderProgram(openGLContext));   // [1]
+    std::unique_ptr<juce::OpenGLShaderProgram> newShader(new juce::OpenGLShaderProgram(openGLContext)); 
     juce::String statusText;
 
-    if (newShader->addVertexShader(juce::OpenGLHelpers::translateVertexShaderToV3(vertexShader))          // [2]
+    if (newShader->addVertexShader(juce::OpenGLHelpers::translateVertexShaderToV3(vertexShader))
         && newShader->addFragmentShader(juce::OpenGLHelpers::translateFragmentShaderToV3(fragmentShader))
         && newShader->link()) {
         attributes.reset();
         uniforms.reset();
 
-        shader.reset(newShader.release());                                                                 // [3]
+        shader.reset(newShader.release());
         shader->use();
 
         attributes.reset(new Attributes(*shader));
@@ -266,6 +285,14 @@ void OpenGLWindow::createShaders() {
         statusText = "GLSL: v" + juce::String(juce::OpenGLShaderProgram::getLanguageVersion(), 2);
     }
     else {
-        statusText = newShader->getLastError();                                                             // [4]
+        statusText = newShader->getLastError();
     }
 };
+
+juce::Vector3D<float> applyTransformationMatrix(const juce::Matrix3D<float>& matrix, const juce::Vector3D<float>& vector) {
+    juce::Vector3D<float> result;
+    result.x = result.x = matrix.mat[4 * 0 + 0] * vector.x + matrix.mat[4 * 0 + 1] * vector.y + matrix.mat[4 * 0 + 2] * vector.z + matrix.mat[4 * 0 + 3];
+    result.y = result.y = matrix.mat[4 * 1 + 0] * vector.x + matrix.mat[4 * 1 + 1] * vector.y + matrix.mat[4 * 1 + 2] * vector.z + matrix.mat[4 * 1 + 3];
+    result.z = result.z = matrix.mat[4 * 2 + 0] * vector.x + matrix.mat[4 * 2 + 1] * vector.y + matrix.mat[4 * 2 + 2] * vector.z + matrix.mat[4 * 2 + 3];
+    return result;
+}
