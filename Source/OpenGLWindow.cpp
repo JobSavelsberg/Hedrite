@@ -1,7 +1,8 @@
 #include "OpenGLWindow.h"
 
 OpenGLWindow::OpenGLWindow() {
-    setSize(900, 700);
+    setSize(700, 700);
+    camera.setViewport(getLocalBounds());
 }
 
 
@@ -23,7 +24,6 @@ void OpenGLWindow::initialise() {
 }
 
 
-
 void OpenGLWindow::shutdown() {
     shader.reset();
     shapes.clear();
@@ -31,7 +31,33 @@ void OpenGLWindow::shutdown() {
     uniforms.reset();
 }
 
+void OpenGLWindow::resized() {
+    camera.setViewport(getLocalBounds());
+}
+
+void OpenGLWindow::mouseDown(const MouseEvent& e) {
+    camera.mouseDown(e.getPosition());
+}
+
+void OpenGLWindow::mouseDrag(const MouseEvent& e) {
+    camera.mouseDrag(e.getPosition());
+}
+
+void OpenGLWindow::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& w) {
+    cameraDistanceNext = cameraDistanceNext * (1-w.deltaY*scrollSpeedFactor);
+}
+
+auto newTime = std::chrono::high_resolution_clock::now();
+auto oldTime = std::chrono::high_resolution_clock::now();
+
 void OpenGLWindow::render(){
+    newTime = std::chrono::high_resolution_clock::now();
+    double dt = std::chrono::duration<double, std::milli>(newTime - oldTime).count()/1000;
+    oldTime = newTime;
+    //update
+    cameraDistance += 15*dt*((double)cameraDistanceNext - cameraDistance);
+
+    //render
     using namespace ::juce::gl;
 
     jassert(juce::OpenGLHelpers::isContextActive());
@@ -40,14 +66,12 @@ void OpenGLWindow::render(){
     juce::OpenGLHelpers::clear(Colour());
 
     glEnable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glPolygonOffset(0.1,1);
 
-    glViewport(0,
-        0,
-        juce::roundToInt(desktopScale * (float)getWidth()),
-        juce::roundToInt(desktopScale * (float)getHeight()));
+    glViewport(0, 0, roundToInt(desktopScale * (float)getWidth()), roundToInt(desktopScale * (float)getHeight()));
 
     shader->use();
 
@@ -61,9 +85,20 @@ void OpenGLWindow::render(){
         Vector3D<float> lightPos = (Vector3D<float>)applyTransformationMatrix(getViewMatrix(), getLightPosition());
         uniforms->lightPosition->set(lightPos.x, lightPos.y, lightPos.z, 1.0f);
     }
-        
+    
+    uniforms->hasWireframe->set(0);
+    uniforms->wireframeColour->set(0,0,0,1);
 
+    glPolygonMode(GL_FRONT, GL_FILL);
     for (auto& shape : shapes) {
+        shape.draw(*attributes);
+    }
+
+
+    glPolygonMode(GL_FRONT, GL_LINE);
+    for (auto& shape : shapes) {
+        uniforms->hasWireframe->set(shape.hasWireframe? 1: 0);
+        uniforms->wireframeColour->set(shape.wireframeColour.getFloatRed(), shape.wireframeColour.getFloatGreen(), shape.wireframeColour.getFloatBlue(), shape.wireframeColour.getFloatAlpha());
         shape.draw(*attributes);
     }
 
@@ -73,15 +108,14 @@ void OpenGLWindow::render(){
  
 }
 
+
 void OpenGLWindow::paint(juce::Graphics& g) {
     // You can add your component specific drawing code here!
     // This will draw over the top of the openGL background.
 
-    g.setColour(getLookAndFeel().findColour(juce::Label::textColourId));
-    g.setFont(20);
-    g.drawText("OpenGL Test", 25, 20, 300, 30, juce::Justification::left);
-    g.drawLine(20, 20, 140, 20);
-    g.drawLine(20, 50, 140, 50);
+    //g.setColour(getLookAndFeel().findColour(juce::Label::textColourId));
+    //g.setFont(30);
+    //g.drawText("OpenGL Test", 25, 20, 300, 30, juce::Justification::left);
 }
 
 /*
@@ -140,6 +174,8 @@ OpenGLWindow::Uniforms::Uniforms(juce::OpenGLShaderProgram& shaderProgram) {
     projectionMatrix.reset(createUniform(shaderProgram, "projectionMatrix"));
     viewMatrix.reset(createUniform(shaderProgram, "viewMatrix"));
     lightPosition.reset(createUniform(shaderProgram, "lightPosition"));
+    hasWireframe.reset(createUniform(shaderProgram, "hasWireframe"));
+    wireframeColour.reset(createUniform(shaderProgram, "wireframeColour"));
 
 }
 
@@ -156,7 +192,7 @@ juce::OpenGLShaderProgram::Uniform* OpenGLWindow::Uniforms::createUniform(juce::
 /*
 *   Shape
 */
-OpenGLWindow::Shape::Shape(int numIndices, float vertexPositions[], float vertexNormals[], juce::uint32 indices[], juce::Colour colour) {
+OpenGLWindow::Shape::Shape(int numIndices, float vertexPositions[], float vertexNormals[], juce::uint32 indices[], juce::Colour colour, bool hasWireframe, juce::Colour wireframeColour): hasWireframe(hasWireframe), wireframeColour(wireframeColour) {
     vertexBuffers.add(new VertexBuffer(numIndices, vertexPositions, vertexNormals, indices, colour));
 }
 
@@ -213,21 +249,25 @@ void OpenGLWindow::Shape::VertexBuffer::bind() {
 }
 
 Matrix3D<float> OpenGLWindow::getProjectionMatrix() const {
-    auto w = 1.0f / (0.5f + 0.1f);
+    auto w = .25f;
     auto h = w * getLocalBounds().toFloat().getAspectRatio(false);
 
-    return Matrix3D<float>::fromFrustum(-w, w, -h, h, 4.0f, 30.0f);
+    return Matrix3D<float>::fromFrustum(-w, w, -h, h, 1.0f, 200.0f);
+
 }
 
 Matrix3D<float> OpenGLWindow::getViewMatrix() const {
-    Matrix3D<float> viewMatrix({ 0.0f, 0.0f, -10.0f });
-    Matrix3D<float> rotationMatrix = viewMatrix.rotation({ -0.3f,4.0f * std::sin((float)getFrameCounter() * 0.005f), 0.5f });
+
+    auto viewMatrix = camera.getRotationMatrix()
+        * Vector3D<float>(0.0f, 0.0f, -cameraDistance);
+
+    auto rotationMatrix = Matrix3D<float>::rotation({ 0, 0, 0 });
 
     return rotationMatrix * viewMatrix;
 }
 
 Vector3D<float> OpenGLWindow::getLightPosition() const {
-    Vector3D<float> lightPos(10.0f,10.0f,0.0f);
+    Vector3D<float> lightPos(10.0f,10.0f,5.0f);
 
     return lightPos;
 }
@@ -243,14 +283,16 @@ void OpenGLWindow::createShaders() {
     uniform mat4 viewMatrix;
     uniform vec4 lightPosition;
 
+    uniform int hasWireframe;
+    uniform vec4 wireframeColour;
+
     varying vec4 destinationColour;
 
     void main()
     {
-        destinationColour = vec4(sourceColour.xyz*min(1, .5+max(dot(normalize(lightPosition), normalize(normal)), 0.0)),1);
-        gl_Position = projectionMatrix * viewMatrix * (position+normal*.01f);
+        destinationColour = vec4( (hasWireframe > 0 ? wireframeColour.xyz : sourceColour.xyz)*min(1, .5+max(dot(normalize(normal), normalize(lightPosition)), 0.0)),1);
+        gl_Position = projectionMatrix * viewMatrix *position ;
     })";
-
     fragmentShader =
 #if JUCE_OPENGL_ES
         R"(varying lowp vec4 destinationColour;)"
@@ -289,10 +331,22 @@ void OpenGLWindow::createShaders() {
     }
 };
 
+
+
 juce::Vector3D<float> applyTransformationMatrix(const juce::Matrix3D<float>& matrix, const juce::Vector3D<float>& vector) {
     juce::Vector3D<float> result;
     result.x = result.x = matrix.mat[4 * 0 + 0] * vector.x + matrix.mat[4 * 0 + 1] * vector.y + matrix.mat[4 * 0 + 2] * vector.z + matrix.mat[4 * 0 + 3];
     result.y = result.y = matrix.mat[4 * 1 + 0] * vector.x + matrix.mat[4 * 1 + 1] * vector.y + matrix.mat[4 * 1 + 2] * vector.z + matrix.mat[4 * 1 + 3];
     result.z = result.z = matrix.mat[4 * 2 + 0] * vector.x + matrix.mat[4 * 2 + 1] * vector.y + matrix.mat[4 * 2 + 2] * vector.z + matrix.mat[4 * 2 + 3];
+    return result;
+}
+
+juce::Matrix3D<float> transposeMatrix(const juce::Matrix3D<float>& matrix) {
+    juce::Matrix3D<float> result;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            result.mat[4 * j + i] = matrix.mat[4 * j + i];
+        }
+    }
     return result;
 }

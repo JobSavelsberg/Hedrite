@@ -21,7 +21,7 @@ public:
     };
 
 	struct Uniforms {
-		std::unique_ptr<juce::OpenGLShaderProgram::Uniform> projectionMatrix, viewMatrix, lightPosition;
+		std::unique_ptr<juce::OpenGLShaderProgram::Uniform> projectionMatrix, viewMatrix, lightPosition, hasWireframe, wireframeColour;
 		Uniforms(juce::OpenGLShaderProgram& shaderProgram);
 	private:
 		static juce::OpenGLShaderProgram::Uniform* createUniform(juce::OpenGLShaderProgram& shaderProgram, const juce::String& uniformName);
@@ -41,8 +41,10 @@ public:
 			void bind();
         };
         juce::OwnedArray<VertexBuffer> vertexBuffers;
+		bool hasWireframe;
+		juce::Colour wireframeColour;
 
-		Shape(int numIndices, float vertexPositions[], float vertexNormals[], juce::uint32 indices[], juce::Colour colour);
+		Shape(int numIndices, float vertexPositions[], float vertexNormals[], juce::uint32 indices[], juce::Colour colour, bool hasWireframe, juce::Colour wireframeColour);
 
 		void draw(Attributes& glAttributes);
     };
@@ -55,6 +57,12 @@ public:
 	std::unique_ptr<Attributes> attributes;
 	std::unique_ptr<Uniforms> uniforms;
 
+	Draggable3DOrientation camera;
+	float cameraDistanceNext = 10.0f;
+	float cameraDistance = 10.0f;
+
+	float scrollSpeedFactor = 0.5;
+
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OpenGLWindow)
 
 	void(*initializeCallback)();
@@ -66,6 +74,15 @@ public:
 
 	void shutdown() override;
 	void render() override;
+
+	void resized() override;
+	void mouseDown(const MouseEvent& e) override;
+	//void mouseUp(const MouseEvent& e) override;
+	void mouseDrag(const MouseEvent& e) override;
+	//void mouseDoubleClick(const MouseEvent& e) override;
+	void mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& w) override;
+	//void mouseMagnify(const MouseEvent& e, float scale) override;
+
 	void paint(juce::Graphics& g) override;
 
 	void createShaders();
@@ -74,3 +91,4 @@ public:
 	Matrix3D<float> getProjectionMatrix() const;
 };
 juce::Vector3D<float> applyTransformationMatrix(const juce::Matrix3D<float>& matrix, const juce::Vector3D<float>& vector);
+juce::Matrix3D<float> transposeMatrix(const juce::Matrix3D<float>& matrix);

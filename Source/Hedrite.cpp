@@ -26,10 +26,10 @@ void Hedrite::mounted() {
 	DBG("--- Hedrite mounted ---");  
 
     Vector3D<float> points[4] = {
-       Vector3D<float>(1.0f, 0.0f, -invsqrt2),
-       Vector3D<float>(-1.0f, 0.0f, -invsqrt2),
-       Vector3D<float>(0.0f, -1.0f, invsqrt2),
-       Vector3D<float>(0.0f, 1.0f, invsqrt2),
+       Vector3D<float>(1.0f, 0.0f, invsqrt2),
+       Vector3D<float>(-1.0f, 0.0f, invsqrt2),
+       Vector3D<float>(0.0f, -1.0f, -invsqrt2),
+       Vector3D<float>(0.0f, 1.0f, -invsqrt2),
     };
 
     int order[12]{
@@ -61,7 +61,7 @@ void Hedrite::mounted() {
 
             auto u = c - a;
             auto v = b - a;
-            auto n = u ^ v;
+            auto n = -u ^ v;
 
             vertexNormals[i * 9 + j * 3] = n.x;
             vertexNormals[i * 9 + j * 3 + 1] = n.y;
@@ -70,6 +70,33 @@ void Hedrite::mounted() {
         }
     }
 
-    openGLWindow->shapes.emplace_back(12, vertexPositions, vertexNormals, indices, juce::Colours::crimson);
-    
+    openGLWindow->shapes.emplace_back(12, vertexPositions, vertexNormals, indices, juce::Colours::crimson, true, juce::Colours::crimson.brighter(1));
+
+
+    Vector3D<float> points2[4] = {
+   Vector3D<float>(3.0f, 2.0f,invsqrt2),
+   Vector3D<float>(1.0f, 2.0f, invsqrt2),
+   Vector3D<float>(2.0f, 1.0f, -invsqrt2),
+   Vector3D<float>(2.0f, 3.0f, -invsqrt2),
+    };
+
+    float vertexPositions2[4 * 3 * 3];
+
+    int vertexPositionIndex2 = 0;
+    for (int i = 0; i < 12; i++) {
+        auto vertexOrderIndex = order[i];
+        vertexPositions2[vertexPositionIndex2 * 3] = points2[vertexOrderIndex].x;
+        vertexPositions2[vertexPositionIndex2 * 3 + 1] = points2[vertexOrderIndex].y;
+        vertexPositions2[vertexPositionIndex2 * 3 + 2] = points2[vertexOrderIndex].z;
+        vertexPositionIndex2++;
+    }
+
+
+   
+
+    openGLWindow->shapes.emplace_back(12, vertexPositions2, vertexNormals, indices, juce::Colours::blueviolet, true, juce::Colours::blueviolet.brighter(1));
+
+    openGLWindow->shapes.emplace_back(12, vertexPositions2, vertexNormals, indices, juce::Colours::blueviolet, true, juce::Colours::blueviolet.brighter(1));
+
+
 }
